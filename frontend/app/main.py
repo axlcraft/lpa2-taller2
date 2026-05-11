@@ -9,7 +9,7 @@ from io import BytesIO
 import os
 
 app = Flask(__name__)
-BACKEND_URL = os.getenv('BACKEND_URL', 'http://backend:8000')
+BACKEND_URL = os.getenv('BACKEND_API_URL', 'http://backend:8000')
 
 @app.route('/')
 def index():
@@ -20,37 +20,77 @@ def generar_pdf():
     try:
         id_factura = request.form['id_factura']
         response = requests.get(f'{BACKEND_URL}/facturas/v1/{id_factura}')
-        
+
         if response.status_code != 200:
-            abort(404, description="Factura no encontrada")
-            
+            abort(response.status_code, description="Factura no encontrada")
+
         factura = response.json()
-        
-        # TODO: Crear buffer y doc para la creación del PDF
-        
 
-        # TODO: Adicionar el Título, ID
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=20*mm, rightMargin=20*mm, topMargin=20*mm, bottomMargin=20*mm)
+        styles = getSampleStyleSheet()
+        elements = []
 
-        
-        # TODO: Agregar Información de la Empresa
+        elements.append(Paragraph(f"Factura: {factura.get('numero_factura', '')}", styles['Title']))
+        elements.append(Spacer(1, 8))
+        elements.append(Paragraph(f"Fecha de emisión: {factura.get('fecha_emision', '')}", styles['Normal']))
+        elements.append(Spacer(1, 12))
 
+        elements.append(Paragraph("Empresa", styles['Heading2']))
+        empresa = factura.get('empresa', {})
+        elements.append(Paragraph(empresa.get('nombre', ''), styles['Normal']))
+        elements.append(Paragraph(empresa.get('direccion', ''), styles['Normal']))
+        elements.append(Paragraph(f"Teléfono: {empresa.get('telefono', '')}", styles['Normal']))
+        elements.append(Paragraph(f"Email: {empresa.get('email', '')}", styles['Normal']))
+        elements.append(Spacer(1, 12))
 
-        # TODO: Agregar Información del Cliente
+        elements.append(Paragraph("Cliente", styles['Heading2']))
+        cliente = factura.get('cliente', {})
+        elements.append(Paragraph(cliente.get('nombre', ''), styles['Normal']))
+        elements.append(Paragraph(cliente.get('direccion', ''), styles['Normal']))
+        elements.append(Paragraph(f"Teléfono: {cliente.get('telefono', '')}", styles['Normal']))
+        elements.append(Spacer(1, 12))
 
+        detalle = factura.get('detalle', [])
+        table_data = [["Descripción", "Cantidad", "Precio unitario", "Total"]]
+        for item in detalle:
+            table_data.append([
+                item.get('descripcion', ''),
+                str(item.get('cantidad', '')),
+                f"€{item.get('precio_unitario', 0):,.2f}",
+                f"€{item.get('total', 0):,.2f}"
+            ])
 
-        # TODO: Adicionar el Detalle de la Factura: cantidad, descripción, precio unitario y total
+        table = Table(table_data, colWidths=[220*mm/4, 40*mm/4, 60*mm/4, 40*mm/4])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4CAF50')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('ALIGN', (1, 1), (-1, -1), 'CENTER'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        elements.append(table)
+        elements.append(Spacer(1, 12))
 
+        subtotal = factura.get('subtotal', 0)
+        impuesto = factura.get('impuesto', 0)
+        total = factura.get('total', 0)
 
-        # TODO: Adicionar Subtotal, impuesto y Total
+        elements.append(Paragraph(f"Subtotal: €{subtotal:,.2f}", styles['Normal']))
+        elements.append(Paragraph(f"Impuesto: €{impuesto:,.2f}", styles['Normal']))
+        elements.append(Paragraph(f"Total: €{total:,.2f}", styles['Heading2']))
 
-
-        # Generar el doc y limpiar el buffer
         doc.build(elements)
         buffer.seek(0)
-        
-        # TODO: Retornar a la página el PDF para visualizar y descargar
 
-        
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=f"{id_factura}.pdf",
+            mimetype='application/pdf'
+        )
+
     except requests.exceptions.ConnectionError:
         abort(503, description="Error de conexión con el servidor")
     except Exception as e:
