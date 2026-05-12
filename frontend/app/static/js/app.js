@@ -114,6 +114,11 @@ function renderPreview(factura) {
         </tr>
     `).join('');
 
+    // Asegurar que haya al menos 4 filas visibles
+    const minRows = 4;
+    const emptyRows = Math.max(0, minRows - factura.detalle.length);
+    const emptyRowHtml = '<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>'.repeat(emptyRows);
+
     content.innerHTML = `
         <div class="preview-section">
             <div class="preview-block">
@@ -147,6 +152,7 @@ function renderPreview(factura) {
                 </thead>
                 <tbody>
                     ${detalleRows}
+                    ${emptyRowHtml}
                 </tbody>
             </table>
             <div class="preview-totals">

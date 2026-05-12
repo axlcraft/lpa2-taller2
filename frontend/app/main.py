@@ -11,6 +11,7 @@ import logging
 
 app = Flask(__name__)
 BACKEND_URL = os.getenv('BACKEND_API_URL', 'http://backend:8000')
+preview_cache = {}
 
 # Configurar logging
 logging.basicConfig(level=logging.DEBUG)
@@ -26,7 +27,10 @@ def preview_factura(id_factura: str):
         response = requests.get(f'{BACKEND_URL}/facturas/v1/{id_factura}', timeout=5)
         if response.status_code != 200:
             abort(response.status_code, description='Factura no encontrada')
-        return jsonify(response.json())
+
+        factura = response.json()
+        preview_cache[id_factura] = factura
+        return jsonify(factura)
     except requests.exceptions.RequestException:
         abort(503, description='Error de conexión con el servidor')
 
@@ -44,15 +48,16 @@ def status():
 def generar_pdf():
     try:
         id_factura = request.form['id_factura']
-        response = requests.get(f'{BACKEND_URL}/facturas/v1/{id_factura}')
+        factura = preview_cache.get(id_factura)
 
-        if response.status_code != 200:
-            abort(response.status_code, description="Factura no encontrada")
-
-        factura = response.json()
+        if not factura:
+            response = requests.get(f'{BACKEND_URL}/facturas/v1/{id_factura}')
+            if response.status_code != 200:
+                abort(response.status_code, description="Factura no encontrada")
+            factura = response.json()
 
         buffer = BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=20*mm, rightMargin=20*mm, topMargin=20*mm, bottomMargin=20*mm)
+        doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=10*mm, rightMargin=10*mm, topMargin=20*mm, bottomMargin=20*mm)
         styles = getSampleStyleSheet()
         elements = []
 
@@ -86,13 +91,18 @@ def generar_pdf():
                 f"€{item.get('total', 0):,.2f}"
             ])
 
+        # Asegurar que la tabla del PDF tenga al menos 4 filas
+        min_rows_pdf = 4
+        while len(table_data) - 1 < min_rows_pdf:
+            table_data.append(['', '', '', ''])
+
         # Agregar espacio antes de la tabla
         elements.append(Spacer(1, 20))
 
-        # Ajustar anchos de columna para mejor distribución (en puntos)
-        # Página A4: 595 puntos ancho, márgenes 40mm = ~113 puntos cada lado
-        # Ancho útil: ~369 puntos
-        table = Table(table_data, colWidths=[160, 40, 75, 60])  # Anchos optimizados
+        # Ajustar columnas para que todas tengan el mismo ancho en A4
+        # Página A4: 595 puntos ancho, márgenes 10mm = ~28.35 puntos cada lado
+        # Ancho útil: ~538 puntos
+        table = Table(table_data, colWidths=[150, 80, 120, 120], repeatRows=1)
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4CAF50')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
@@ -100,10 +110,12 @@ def generar_pdf():
             ('ALIGN', (0, 1), (0, -1), 'LEFT'),  # Alinear descripción a la izquierda
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
             ('WORDWRAP', (0, 1), (0, -1), True),  # Permitir ajuste de línea en descripción
             ('FONTSIZE', (0, 1), (-1, -1), 8),  # Tamaño de fuente adecuado
-            ('LEADING', (0, 1), (0, -1), 9),   # Espaciado de línea
+            ('LEADING', (0, 1), (0, -1), 10),   # Espaciado de línea
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
         ]))
         elements.append(table)
         elements.append(Spacer(1, 12))
