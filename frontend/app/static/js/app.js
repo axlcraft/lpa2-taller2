@@ -1,24 +1,30 @@
 // Funciones auxiliares para la interfaz web
 
-const API_URL = 'http://backend:8000';
-
-// Verificar el estado del backend
+// Verificar el estado del backend a través del frontend para evitar problemas de CORS
 async function verificarEstadoBackend() {
     try {
-        const response = await fetch(`${API_URL}/`, {
-            method: 'GET',
-            mode: 'no-cors'
-        });
-        
+        const response = await fetch('/status');
         const badge = document.getElementById('statusBadge');
+
+        if (response.ok) {
+            if (badge) {
+                badge.textContent = '🟢 Conectado';
+                badge.classList.remove('offline');
+                badge.classList.add('online');
+            }
+            return;
+        }
+
         if (badge) {
-            badge.textContent = '🟢 Conectado';
-            badge.classList.add('online');
+            badge.textContent = '🔴 Desconectado';
+            badge.classList.remove('online');
+            badge.classList.add('offline');
         }
     } catch (error) {
         const badge = document.getElementById('statusBadge');
         if (badge) {
             badge.textContent = '🔴 Desconectado';
+            badge.classList.remove('online');
             badge.classList.add('offline');
         }
     }

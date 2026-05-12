@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_file, abort
+from flask import Flask, render_template, request, send_file, abort, jsonify
 import requests
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
@@ -14,6 +14,16 @@ BACKEND_URL = os.getenv('BACKEND_API_URL', 'http://backend:8000')
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/status')
+def status():
+    try:
+        response = requests.get(f'{BACKEND_URL}/', timeout=3)
+        if response.status_code == 200:
+            return jsonify({"status": "ok", "backend": response.json()})
+        return jsonify({"status": "error", "backend_status": response.status_code}), 502
+    except requests.exceptions.RequestException:
+        return jsonify({"status": "unavailable"}), 503
 
 @app.route('/generar-pdf', methods=['POST'])
 def generar_pdf():
