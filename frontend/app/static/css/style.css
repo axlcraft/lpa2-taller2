@@ -307,3 +307,149 @@ input[type="text"]::placeholder {
     }
 }
 
+.btn-secondary {
+    background: #f4f4f8;
+    color: #333;
+    border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover {
+    background: #e5e7eb;
+}
+
+.btn-tertiary {
+    background: transparent;
+    color: #333;
+    border: 1px solid #ccc;
+}
+
+.btn-tertiary:hover {
+    background: #f9fafb;
+}
+
+.preview-container {
+    margin-top: 24px;
+    padding: 24px;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.preview-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.preview-header h3 {
+    margin: 0;
+    font-size: 1.25em;
+    color: #111827;
+}
+
+.preview-content {
+    font-size: 0.95em;
+    color: #374151;
+}
+
+.preview-section {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.preview-block {
+    background: white;
+    border-radius: 10px;
+    padding: 16px;
+    border: 1px solid #e5e7eb;
+}
+
+.preview-block h4 {
+    margin-bottom: 10px;
+    color: #111827;
+}
+
+.preview-block p {
+    margin: 6px 0;
+}
+
+.preview-table-wrapper {
+    overflow-x: auto;
+}
+
+.preview-table-wrapper table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+    table-layout: fixed;
+}
+
+.preview-table-wrapper th,
+.preview-table-wrapper td {
+    padding: 12px 14px;
+    border: 1px solid #e5e7eb;
+    text-align: left;
+    word-break: break-word;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    vertical-align: top;
+}
+
+.preview-table-wrapper th:first-child,
+.preview-table-wrapper td:first-child {
+    width: 45%;
+}
+
+.preview-table-wrapper th:nth-child(2),
+.preview-table-wrapper td:nth-child(2) {
+    width: 15%;
+}
+
+.preview-table-wrapper th:nth-child(3),
+.preview-table-wrapper td:nth-child(3) {
+    width: 20%;
+}
+
+.preview-table-wrapper th:nth-child(4),
+.preview-table-wrapper td:nth-child(4) {
+    width: 20%;
+}
+
+.preview-table-wrapper th {
+    background: #eef2ff;
+    color: #1f2937;
+}
+
+.preview-totals {
+    display: flex;
+    justify-content: flex-end;
+    gap: 26px;
+    flex-wrap: wrap;
+}
+
+.preview-totals p {
+    margin: 0;
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .preview-section {
+        grid-template-columns: 1fr;
+    }
+
+    .preview-totals {
+        justify-content: flex-start;
+    }
+}
+
+

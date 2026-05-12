@@ -7,13 +7,28 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
 from io import BytesIO
 import os
+import logging
 
 app = Flask(__name__)
 BACKEND_URL = os.getenv('BACKEND_API_URL', 'http://backend:8000')
 
+# Configurar logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/preview/<string:id_factura>')
+def preview_factura(id_factura: str):
+    try:
+        response = requests.get(f'{BACKEND_URL}/facturas/v1/{id_factura}', timeout=5)
+        if response.status_code != 200:
+            abort(response.status_code, description='Factura no encontrada')
+        return jsonify(response.json())
+    except requests.exceptions.RequestException:
+        abort(503, description='Error de conexión con el servidor')
 
 @app.route('/status')
 def status():
@@ -71,14 +86,24 @@ def generar_pdf():
                 f"€{item.get('total', 0):,.2f}"
             ])
 
-        table = Table(table_data, colWidths=[220*mm/4, 40*mm/4, 60*mm/4, 40*mm/4])
+        # Agregar espacio antes de la tabla
+        elements.append(Spacer(1, 20))
+
+        # Ajustar anchos de columna para mejor distribución (en puntos)
+        # Página A4: 595 puntos ancho, márgenes 40mm = ~113 puntos cada lado
+        # Ancho útil: ~369 puntos
+        table = Table(table_data, colWidths=[160, 40, 75, 60])  # Anchos optimizados
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4CAF50')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('ALIGN', (1, 1), (-1, -1), 'CENTER'),
+            ('ALIGN', (0, 1), (0, -1), 'LEFT'),  # Alinear descripción a la izquierda
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('WORDWRAP', (0, 1), (0, -1), True),  # Permitir ajuste de línea en descripción
+            ('FONTSIZE', (0, 1), (-1, -1), 8),  # Tamaño de fuente adecuado
+            ('LEADING', (0, 1), (0, -1), 9),   # Espaciado de línea
         ]))
         elements.append(table)
         elements.append(Spacer(1, 12))

@@ -1,4 +1,5 @@
 // Funciones auxiliares para la interfaz web
+let previewFacturaId = '';
 
 // Verificar el estado del backend a través del frontend para evitar problemas de CORS
 async function verificarEstadoBackend() {
@@ -73,6 +74,108 @@ function descargarFactura(facturaId) {
     }, 1000);
 }
 
+async function solicitarPreview(facturaId) {
+    try {
+        mostrarCarga(true);
+        const response = await fetch(`/preview/${encodeURIComponent(facturaId)}`);
+        const badge = document.getElementById('statusBadge');
+
+        if (!response.ok) {
+            throw new Error('No se pudo cargar la vista previa');
+        }
+
+        const factura = await response.json();
+        renderPreview(factura);
+
+        if (badge) {
+            badge.textContent = '🟢 Conectado';
+            badge.classList.remove('offline');
+            badge.classList.add('online');
+        }
+    } catch (error) {
+        mostrarError('No se pudo cargar la vista previa. Verifica el número de factura y vuelve a intentarlo.');
+    } finally {
+        mostrarCarga(false);
+    }
+}
+
+function renderPreview(factura) {
+    const container = document.getElementById('previewContainer');
+    const content = document.getElementById('previewContent');
+
+    if (!container || !content) return;
+
+    const detalleRows = factura.detalle.map(item => `
+        <tr>
+            <td>${item.descripcion}</td>
+            <td>${item.cantidad}</td>
+            <td>€${item.precio_unitario.toFixed(2)}</td>
+            <td>€${item.total.toFixed(2)}</td>
+        </tr>
+    `).join('');
+
+    content.innerHTML = `
+        <div class="preview-section">
+            <div class="preview-block">
+                <h4>Factura</h4>
+                <p><strong>Número:</strong> ${factura.numero_factura}</p>
+                <p><strong>Fecha:</strong> ${factura.fecha_emision}</p>
+            </div>
+            <div class="preview-block">
+                <h4>Empresa</h4>
+                <p>${factura.empresa.nombre}</p>
+                <p>${factura.empresa.direccion}</p>
+                <p>${factura.empresa.telefono}</p>
+                <p>${factura.empresa.email}</p>
+            </div>
+            <div class="preview-block">
+                <h4>Cliente</h4>
+                <p>${factura.cliente.nombre}</p>
+                <p>${factura.cliente.direccion}</p>
+                <p>${factura.cliente.telefono}</p>
+            </div>
+        </div>
+        <div class="preview-table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Descripción</th>
+                        <th>Cantidad</th>
+                        <th>Precio unitario</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${detalleRows}
+                </tbody>
+            </table>
+            <div class="preview-totals">
+                <p><strong>Subtotal:</strong> €${factura.subtotal.toFixed(2)}</p>
+                <p><strong>Impuesto:</strong> €${factura.impuesto.toFixed(2)}</p>
+                <p><strong>Total:</strong> €${factura.total.toFixed(2)}</p>
+            </div>
+        </div>
+    `;
+
+    container.style.display = 'block';
+    previewFacturaId = factura.numero_factura || '';
+}
+
+function descargarPreviewFactura() {
+    if (!previewFacturaId) {
+        mostrarError('No hay factura seleccionada para descargar');
+        return;
+    }
+    descargarFactura(previewFacturaId);
+}
+
+function hidePreview() {
+    const container = document.getElementById('previewContainer');
+    if (container) {
+        container.style.display = 'none';
+    }
+}
+
 // Mostrar mensaje de error
 function mostrarError(mensaje) {
     const alertDiv = document.createElement('div');
@@ -121,6 +224,21 @@ function mostrarCarga(mostrar) {
 document.addEventListener('DOMContentLoaded', () => {
     verificarEstadoBackend();
     
+    document.getElementById('previewBtn')?.addEventListener('click', () => {
+        const facturaId = document.getElementById('id_factura').value.trim();
+        if (!facturaId) {
+            mostrarError('Por favor ingresa un número de factura para previsualizar');
+            return;
+        }
+        solicitarPreview(facturaId);
+    });
+
+    document.getElementById('downloadPreviewBtn')?.addEventListener('click', () => {
+        descargarPreviewFactura();
+    });
+
+    document.getElementById('closePreviewBtn')?.addEventListener('click', hidePreview);
+
     // Reintentar verificar estado cada 30 segundos
     setInterval(verificarEstadoBackend, 30000);
 });
